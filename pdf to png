@@ -9,8 +9,8 @@ import os
 import fitz
 
 
-path = r'I:\UTCS\Region\Africa\Ref_Data\LIBRARY.lon\Well\ALGERIA\DSDP 364\Core Photos'
-out_path = r'I:\UTCS\Region\Africa\Ref_Data\LIBRARY.lon\Well\ALGERIA\DSDP 364\Core Photos\PNG'
+path = r'Y:\USERS\ODOOLEY\python\Pdf'
+out_path = r'Y:\USERS\ODOOLEY\python\PNG'
 files = os.listdir(path)
 
 zy = 4.0
