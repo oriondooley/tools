@@ -1,0 +1,84 @@
+# -*- coding: utf-8 -*-
+"""
+Spyder Editor
+
+File lister script by Orion Dooley
+Oct 7, 2022
+"""
+
+#import modules
+import os
+from os import walk
+from datetime import datetime
+import csv
+
+
+#scan_path - the folder that will be recursively scanned
+scan_path = r"H:\\"
+#output_path - the folder where the output file will be saved
+output_path = r"H:\\outputs"
+
+#get date/time stamp now
+dt = str(datetime.now())
+
+#replace spaces with underscores
+dtstamp = dt.replace(' ','_')
+
+#take just the date
+date = (dtstamp[:10])
+
+#debug
+#print(r"date = " + date)
+#debug
+print('scan started.... '+ date)
+
+#make file output location
+fileoutput = str(('scan_' + date +'.csv'))
+
+#debug
+#print('output file name:  '+ fileoutput)
+
+#create output file name/path
+file_path = os.path.join(output_path,fileoutput)
+
+#debug
+#print(file_path)
+
+#open CSV
+with open(file_path,'w',encoding='UTF8') as f:
+    #open writer
+    writer = csv.writer(f)
+    #use writer to write row 
+    writer.writerow([r"Scan started "+dtstamp])
+    print("Output file created")
+    print("Scanning "+scan_path)
+    print("...")
+#recursively walk through the file system & write file paths to csv
+    for (root, dirs, files) in os.walk(scan_path): 
+       for name in files:
+          fullpath = os.path.join(root,name)
+          #size = str(os.path.size(fullpath))
+          #row = (fullpath+", "+size) 
+          writer.writerow([fullpath])
+          #print("Writing to file..."+row)
+       for name in dirs:
+           fullpath = os.path.join(root,name)
+           #size = str(os.path.size(fullpath))
+           #row = (fullpath+", "+size)
+           writer.writerow([fullpath])
+           #print("Writing to file..."+row)
+           
+print("...")          
+ #notification as to where you may find the output:        
+print("Success!")
+print("Please find output at:")
+print(file_path)
+
+
+
+
+
+
+
+
+
