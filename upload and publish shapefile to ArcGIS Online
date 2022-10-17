@@ -1,0 +1,18 @@
+# import from argis api
+from arcgis.gis import GIS
+from arcgis import features
+
+#create GIS object
+gis = GIS ('home')
+
+#set shapefile (zipped for upload)
+shp_file = r'I:\Organisation\Exploration\STS\USERS\odooley\Greece_Blocks.zip'
+
+# set title for object in ArcGIS online
+item_prop = {'title':'Test SHAPEFILE Upload'}
+
+# upload zipped shapefile
+shp_item = gis.content.add(item_properties=item_prop, data = shp_file)
+
+#publish uploaded file to feature layer so it may be added to maps
+blk_item = shp_item.publish()
