@@ -1,0 +1,14 @@
+import arcpy
+
+#create combined list of points to buffer
+fclist = ["points1", "points2"]
+
+#buffer points and store in bufflist
+bufflist = []
+for fc in fclist:
+    buff = arcpy.Buffer_analysis(fc,fc+"_Buffer","1 kilometer")
+    bufflist.append(buff)
+print(bufflist)
+
+for buff in buffList:
+    arcpy.SelectLayerByLocation_management('points3', 'WITHIN',buff,0, 'ADD_TO_SELECTION')
