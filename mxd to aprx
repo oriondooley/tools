@@ -1,0 +1,29 @@
+
+import arcpy, os
+
+#List full path location of MXD(s) in workspaceMXD  
+workspaceMXD = input(r"FOLDER CONTAINING MXDS:")
+arcpy.env.workspace = workspaceMXD
+mxdlist = arcpy.ListFiles("*.mxd")
+
+for mxd in mxdlist:
+    #aprx project that MXD(s) are being imported into
+    aprx = arcpy.mp.ArcGISProject(r"\\LDNNCS01C01\ODOOLEY$\Sync\ArcGIS\Projects\blank\blank.aprx")
+   
+    fullpath = os.path.join(workspaceMXD, mxd)
+    print("Importing: {}".format(fullpath))
+    
+    #import the MXD(s) into Pro
+    aprx.importDocument(fullpath) 
+    
+    #the count of the maps
+    m = aprx.listMaps()
+    print("Currently {0} maps in Project file.".format(len(m)))
+
+    #name the maps
+    aprx.listMaps()[-1].name = mxd.split("\\")[-1][:-4]
+
+    #save a copy of the project in the workspace folder
+    aprx.saveACopy(fullpath)
+    print("----done----")
+    del(aprx)
