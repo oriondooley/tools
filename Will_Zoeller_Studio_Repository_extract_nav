@@ -1,0 +1,454 @@
+
+######################################################################
+##  FINAL SCRIPT
+##  Written by: William Zoeller
+##  Last updated: Dec 3, 2022
+##  Purpose: Access Studio repositories, run queries, extract seismic nav/cubes
+#######################################################################
+
+# -*- coding: utf-8 -*-
+
+import arcpy
+from datetime import datetime
+
+#sde connections to studio instances
+P_PET_SAKP = r'I:\UTCS\Region\Global\LVS\GLOB_NO\Work\_global_pet\COUNTRIES\Work\Users\wmzoell\ArcGIS\Connections\P_PET_SAKP.sde'
+P_PET_SSA1P = r'I:\UTCS\Region\Global\LVS\GLOB_NO\Work\_global_pet\COUNTRIES\Work\Users\wmzoell\ArcGIS\Connections\P_PET_SSA1P.sde'
+P_PET_SSA2P = r'I:\UTCS\Region\Global\LVS\GLOB_NO\Work\_global_pet\COUNTRIES\Work\Users\wmzoell\ArcGIS\Connections\P_PET_SSA2P.sde'
+P_PET_SAMP = r'I:\UTCS\Region\Global\LVS\GLOB_NO\Work\_global_pet\COUNTRIES\Work\Users\wmzoell\ArcGIS\Connections\P_PET_SAMP.sde'
+P_PET_NSAP = r'I:\UTCS\Region\Global\LVS\GLOB_NO\Work\_global_pet\COUNTRIES\Work\Users\wmzoell\ArcGIS\Connections\P_PET_NSAP.sde'
+P_PET_XTOP = r'I:\UTCS\Region\Global\LVS\GLOB_NO\Work\_global_pet\COUNTRIES\Work\Users\wmzoell\ArcGIS\Connections\P_PET_XTOP.sde'
+
+##geoprocessing workspace (output location)
+geoprocessing_workspace = r'I:\UTCS\Region\Global\LVS\GLOB_NO\Work\_global_pet\COUNTRIES\Work\Users\wmzoell\ArcGIS\Models\geoprocessing.gdb'
+
+##dictionary of studio instances and database prefixes
+studio_dict = {
+    P_PET_SAKP:['SAK01'],
+    P_PET_SSA1P:['WAFR_HOU'],
+    P_PET_SSA2P:['EAFR_HOU'],
+    P_PET_SAMP: ['BRAZIL_INT','GUYANA_INT'],
+    P_PET_NSAP:['GOM_INT'],
+    P_PET_XTOP:['DELAWARE_BASIN','MIDLAND_BASIN']
+
+}
+
+
+
+################################
+## START STUDIO 3D FUNCTION
+###############################
+def get_studio_3d(k,v,geoprocessing_workspace):
+    """Creates two query layers to create 3D seismic collection and 3D seismic cubes. 
+    
+    Function argument requires a dictionary with a key to the sde filepath and a list of 
+    values for each of the databases in the studio instance.    
+        
+
+    Parameters
+    ----------
+    k : dictionary key, required
+        The key contains sde filepath as a string
+    
+    v: dictionary values, required
+        The list of string values for the prefix 
+        of each database instance. 
+        
+    geoprocessing_workspace: workspace, string
+        The filepath for the geodatabase where 
+        the output will reside
+    
+    """
+    
+    #get the studio repo name from the sde filepath
+    db_name = ''
+    db_name = k.split('\\')[-1]
+    db_name = db_name.split('.')[0]
+    
+    print(f'\nQuerying 3D seismic from {db_name}:{v} studio...')
+    
+    #variable names for output
+    out_collection = db_name+'_'+v+'_3D_collection'
+    out_vintages = db_name+'_'+v+'_3D_vintages'
+    
+    
+    #MakeQuery Arguments
+    oid_fields=["ID"]
+    shape_type="POLYGON"
+    srid="4326"
+    spatial_reference='"GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]];-400 -400 1000000000;-100000 10000;-100000 10000;8.98315284119521E-09;0.001;0.001;IsHighPrecision"'
+    spatial_properties="DEFINE_SPATIAL_PROPERTIES"
+    m_values="DO_NOT_INCLUDE_M_VALUES"
+    z_values="DO_NOT_INCLUDE_Z_VALUES"
+    extent="0 0 0 0"
+
+    #FC2FC Arguments
+    field_mapping_collections="AREA_ \"AREA_\" true true false 4 Long 0 10,First,#,dov_seis3D_geom_raw_SSA1,AREA_,-1,-1;BOUNDARY_ \"BOUNDARY_\" true true false 4 Long 0 10,First,#,dov_seis3D_geom_raw_SSA1,BOUNDARY_,-1,-1;COMMENTS \"COMMENTS\" true true false 4000 Text 0 0,First,#,dov_seis3D_geom_raw_SSA1,COMMENTS,0,4000;CUBE_ \"CUBE_\" true true false 4 Long 0 10,First,#,dov_seis3D_geom_raw_SSA1,CUBE_,-1,-1;GUID \"GUID\" true true false 128 Text 0 0,First,#,dov_seis3D_geom_raw_SSA1,GUID,0,128;IANNOTATION \"IANNOTATION\" true true false 8 Double 10 38,First,#,dov_seis3D_geom_raw_SSA1,IANNOTATION,-1,-1;IANNOTATIONINCREMENT \"IANNOTATIONINCREMENT\" true true false 8 Double 10 38,First,#,dov_seis3D_geom_raw_SSA1,IANNOTATIONINCREMENT,-1,-1;ICOUNT \"ICOUNT\" true true false 4 Long 0 10,First,#,dov_seis3D_geom_raw_SSA1,ICOUNT,-1,-1;INSERT_DATE \"INSERT_DATE\" true true false 8 Date 0 0,First,#,dov_seis3D_geom_raw_SSA1,INSERT_DATE,-1,-1;INSERT_USER \"INSERT_USER\" true true false 64 Text 0 0,First,#,dov_seis3D_geom_raw_SSA1,INSERT_USER,0,64;JANNOTATION \"JANNOTATION\" true true false 8 Double 10 38,First,#,dov_seis3D_geom_raw_SSA1,JANNOTATION,-1,-1;JANNOTATIONINCREMENT \"JANNOTATIONINCREMENT\" true true false 8 Double 10 38,First,#,dov_seis3D_geom_raw_SSA1,JANNOTATIONINCREMENT,-1,-1;JCOUNT \"JCOUNT\" true true false 4 Long 0 10,First,#,dov_seis3D_geom_raw_SSA1,JCOUNT,-1,-1;JSON_ADMIN_DOC \"JSON_ADMIN_DOC\" true true false 2147483647 Text 0 0,First,#,dov_seis3D_geom_raw_SSA1,JSON_ADMIN_DOC,0,2147483647;JSON_DOC \"JSON_DOC\" true true false 2147483647 Text 0 0,First,#,dov_seis3D_geom_raw_SSA1,JSON_DOC,0,2147483647;KCOUNT \"KCOUNT\" true true false 4 Long 0 10,First,#,dov_seis3D_geom_raw_SSA1,KCOUNT,-1,-1;NAME \"NAME\" true true false 255 Text 0 0,First,#,dov_seis3D_geom_raw_SSA1,NAME,0,255;ORIGINALCRSTEXT \"ORIGINALCRSTEXT\" true true false 4000 Text 0 0,First,#,dov_seis3D_geom_raw_SSA1,ORIGINALCRSTEXT,0,4000;ORIGINALX00 \"ORIGINALX00\" true true false 8 Double 10 38,First,#,dov_seis3D_geom_raw_SSA1,ORIGINALX00,-1,-1;ORIGINALX0J \"ORIGINALX0J\" true true false 8 Double 10 38,First,#,dov_seis3D_geom_raw_SSA1,ORIGINALX0J,-1,-1;ORIGINALXI0 \"ORIGINALXI0\" true true false 8 Double 10 38,First,#,dov_seis3D_geom_raw_SSA1,ORIGINALXI0,-1,-1;ORIGINALY00 \"ORIGINALY00\" true true false 8 Double 10 38,First,#,dov_seis3D_geom_raw_SSA1,ORIGINALY00,-1,-1;ORIGINALY0J \"ORIGINALY0J\" true true false 8 Double 10 38,First,#,dov_seis3D_geom_raw_SSA1,ORIGINALY0J,-1,-1;ORIGINALYI0 \"ORIGINALYI0\" true true false 8 Double 10 38,First,#,dov_seis3D_geom_raw_SSA1,ORIGINALYI0,-1,-1;PARENTGUID \"PARENTGUID\" true true false 128 Text 0 0,First,#,dov_seis3D_geom_raw_SSA1,PARENTGUID,0,128;POSITION00_ \"POSITION00_\" true true false 4 Long 0 10,First,#,dov_seis3D_geom_raw_SSA1,POSITION00_,-1,-1;POSITION0J_ \"POSITION0J_\" true true false 4 Long 0 10,First,#,dov_seis3D_geom_raw_SSA1,POSITION0J_,-1,-1;POSITIONI0_ \"POSITIONI0_\" true true false 4 Long 0 10,First,#,dov_seis3D_geom_raw_SSA1,POSITIONI0_,-1,-1;SEISMICFOLDER_ID \"SEISMICFOLDER_ID\" true true false 4 Long 0 10,First,#,dov_seis3D_geom_raw_SSA1,SEISMICFOLDER_ID,-1,-1;SURVEY3DBOUNDARYNAME \"SURVEY3DBOUNDARYNAME\" true true false 255 Text 0 0,First,#,dov_seis3D_geom_raw_SSA1,SURVEY3DBOUNDARYNAME,0,255;SURVEY3DVERSION \"SURVEY3DVERSION\" true true false 255 Text 0 0,First,#,dov_seis3D_geom_raw_SSA1,SURVEY3DVERSION,0,255;SURVEYCOLLECTION_ID \"SURVEYCOLLECTION_ID\" true true false 4 Long 0 10,First,#,dov_seis3D_geom_raw_SSA1,SURVEYCOLLECTION_ID,-1,-1;SURVEYCRS_ID \"SURVEYCRS_ID\" true true false 4 Long 0 10,First,#,dov_seis3D_geom_raw_SSA1,SURVEYCRS_ID,-1,-1;SURVEYCRSCODE \"SURVEYCRSCODE\" true true false 64 Text 0 0,First,#,dov_seis3D_geom_raw_SSA1,SURVEYCRSCODE,0,64;UPDATE_DATE \"UPDATE_DATE\" true true false 8 Date 0 0,First,#,dov_seis3D_geom_raw_SSA1,UPDATE_DATE,-1,-1;UPDATE_USER \"UPDATE_USER\" true true false 64 Text 0 0,First,#,dov_seis3D_geom_raw_SSA1,UPDATE_USER,0,64"
+    field_mapping_vintages="ACQUISITIONDATE \"ACQUISITIONDATE\" true true false 8 Date 0 0,First,#,dov_seis3D_cube_raw_SAK1,ACQUISITIONDATE,-1,-1;ANGLERANGEMAX \"ANGLERANGEMAX\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,ANGLERANGEMAX,-1,-1;ANGLERANGEMIN \"ANGLERANGEMIN\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,ANGLERANGEMIN,-1,-1;AREA_ \"AREA_\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,AREA_,-1,-1;AZIMUTHRANGEMAX \"AZIMUTHRANGEMAX\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,AZIMUTHRANGEMAX,-1,-1;AZIMUTHRANGEMIN \"AZIMUTHRANGEMIN\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,AZIMUTHRANGEMIN,-1,-1;BLOBDOCINVOLVEMENT_ \"BLOBDOCINVOLVEMENT_\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,BLOBDOCINVOLVEMENT_,-1,-1;CLIPMAX \"CLIPMAX\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,CLIPMAX,-1,-1;CLIPMIN \"CLIPMIN\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,CLIPMIN,-1,-1;COMMENTS \"COMMENTS\" true true false 4000 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,COMMENTS,0,4000;DATASET_ \"DATASET_\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,DATASET_,-1,-1;DATASETCUBENAME \"DATASETCUBENAME\" true true false 255 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,DATASETCUBENAME,0,255;DATASETINVX_ \"DATASETINVX_\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,DATASETINVX_,-1,-1;DOMAIN \"DOMAIN\" true true false 64 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,DOMAIN,0,64;ENTITYTEMPLATEINVOLVEMENT_ \"ENTITYTEMPLATEINVOLVEMENT_\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,ENTITYTEMPLATEINVOLVEMENT_,-1,-1;GEOINVENTORY_ \"GEOINVENTORY_\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,GEOINVENTORY_,-1,-1;GUID \"GUID\" true true false 128 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,GUID,0,128;IANNOTATION \"IANNOTATION\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,IANNOTATION,-1,-1;IANNOTATIONINCREMENT \"IANNOTATIONINCREMENT\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,IANNOTATIONINCREMENT,-1,-1;ICOUNT \"ICOUNT\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,ICOUNT,-1,-1;INSERT_DATE \"INSERT_DATE\" true true false 8 Date 0 0,First,#,dov_seis3D_cube_raw_SAK1,INSERT_DATE,-1,-1;INSERT_USER \"INSERT_USER\" true true false 64 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,INSERT_USER,0,64;JANNOTATION \"JANNOTATION\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,JANNOTATION,-1,-1;JANNOTATIONINCREMENT \"JANNOTATIONINCREMENT\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,JANNOTATIONINCREMENT,-1,-1;JCOUNT \"JCOUNT\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,JCOUNT,-1,-1;JSON_ADMIN_DOC \"JSON_ADMIN_DOC\" true true false 2147483647 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,JSON_ADMIN_DOC,0,2147483647;JSON_DOC \"JSON_DOC\" true true false 2147483647 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,JSON_DOC,0,2147483647;KCOUNT \"KCOUNT\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,KCOUNT,-1,-1;NAME \"NAME\" true true false 255 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,NAME,0,255;NODEINVVINTAGE_ \"NODEINVVINTAGE_\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,NODEINVVINTAGE_,-1,-1;NUMOFKSAMPLES \"NUMOFKSAMPLES\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,NUMOFKSAMPLES,-1,-1;OFFSETRANGEMAX \"OFFSETRANGEMAX\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,OFFSETRANGEMAX,-1,-1;OFFSETRANGEMIN \"OFFSETRANGEMIN\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,OFFSETRANGEMIN,-1,-1;ORIGINALCOORDSYSTEM00_ID \"ORIGINALCOORDSYSTEM00_ID\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,ORIGINALCOORDSYSTEM00_ID,-1,-1;ORIGINALCOORDSYSTEM0J_ID \"ORIGINALCOORDSYSTEM0J_ID\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,ORIGINALCOORDSYSTEM0J_ID,-1,-1;ORIGINALCOORDSYSTEMI0_ID \"ORIGINALCOORDSYSTEMI0_ID\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,ORIGINALCOORDSYSTEMI0_ID,-1,-1;ORIGINALCRSTEXT \"ORIGINALCRSTEXT\" true true false 4000 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,ORIGINALCRSTEXT,0,4000;ORIGINALX00 \"ORIGINALX00\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,ORIGINALX00,-1,-1;ORIGINALX0J \"ORIGINALX0J\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,ORIGINALX0J,-1,-1;ORIGINALXI0 \"ORIGINALXI0\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,ORIGINALXI0,-1,-1;ORIGINALY00 \"ORIGINALY00\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,ORIGINALY00,-1,-1;ORIGINALY0J \"ORIGINALY0J\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,ORIGINALY0J,-1,-1;ORIGINALYI0 \"ORIGINALYI0\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,ORIGINALYI0,-1,-1;PARENTGUID \"PARENTGUID\" true true false 128 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,PARENTGUID,0,128;PARENTTEMPLATE_ID \"PARENTTEMPLATE_ID\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,PARENTTEMPLATE_ID,-1,-1;POSITION00_ \"POSITION00_\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,POSITION00_,-1,-1;POSITION0J_ \"POSITION0J_\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,POSITION0J_,-1,-1;POSITIONI0_ \"POSITIONI0_\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,POSITIONI0_,-1,-1;PROCESSINGSTEP \"PROCESSINGSTEP\" true true false 64 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,PROCESSINGSTEP,0,64;REALIZEDFILENAME \"REALIZEDFILENAME\" true true false 255 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,REALIZEDFILENAME,0,255;REFERENCEFILENAME \"REFERENCEFILENAME\" true true false 999 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,REFERENCEFILENAME,0,999;SAMPLEUNIT \"SAMPLEUNIT\" true true false 2 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,SAMPLEUNIT,0,2;SECONDARYACQUISITIONDATE \"SECONDARYACQUISITIONDATE\" true true false 8 Date 0 0,First,#,dov_seis3D_cube_raw_SAK1,SECONDARYACQUISITIONDATE,-1,-1;SEISMICCUBENAME \"SEISMICCUBENAME\" true true false 255 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,SEISMICCUBENAME,0,255;SEISMICDATAFILE_ID \"SEISMICDATAFILE_ID\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,SEISMICDATAFILE_ID,-1,-1;SEISMICFORMAT \"SEISMICFORMAT\" true true false 64 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,SEISMICFORMAT,0,64;SRD \"SRD\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,SRD,-1,-1;SRDNAME \"SRDNAME\" true true false 255 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,SRDNAME,0,255;SRDTIMESHIFT \"SRDTIMESHIFT\" true true false 2147483647 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,SRDTIMESHIFT,0,2147483647;SRDVELOCITY \"SRDVELOCITY\" true true false 2147483647 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,SRDVELOCITY,0,2147483647;STACK \"STACK\" true true false 64 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,STACK,0,64;STACKTYPE \"STACKTYPE\" true true false 64 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,STACKTYPE,0,64;STORAGETYPE \"STORAGETYPE\" true true false 64 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,STORAGETYPE,0,64;SURVEY3D_ID \"SURVEY3D_ID\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,SURVEY3D_ID,-1,-1;SURVEYNAME \"SURVEYNAME\" true true false 255 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,SURVEYNAME,0,255;SURVEYSUBFOLDER_ID \"SURVEYSUBFOLDER_ID\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,SURVEYSUBFOLDER_ID,-1,-1;TIMEVERTICALREFERENCE_ID \"TIMEVERTICALREFERENCE_ID\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,TIMEVERTICALREFERENCE_ID,-1,-1;TRACEDATA_ID \"TRACEDATA_ID\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,TRACEDATA_ID,-1,-1;UPDATE_DATE \"UPDATE_DATE\" true true false 8 Date 0 0,First,#,dov_seis3D_cube_raw_SAK1,UPDATE_DATE,-1,-1;UPDATE_USER \"UPDATE_USER\" true true false 64 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,UPDATE_USER,0,64;VINTAGE_ID \"VINTAGE_ID\" true true false 4 Long 0 10,First,#,dov_seis3D_cube_raw_SAK1,VINTAGE_ID,-1,-1;VINTAGENAME \"VINTAGENAME\" true true false 255 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,VINTAGENAME,0,255;WAVETYPE \"WAVETYPE\" true true false 64 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,WAVETYPE,0,64;Z0POSITION \"Z0POSITION\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,Z0POSITION,-1,-1;ZINTERVAL \"ZINTERVAL\" true true false 8 Double 10 38,First,#,dov_seis3D_cube_raw_SAK1,ZINTERVAL,-1,-1;ZUNIT \"ZUNIT\" true true false 64 Text 0 0,First,#,dov_seis3D_cube_raw_SAK1,ZUNIT,0,64"
+    
+    #Query String
+    query_collections = f'''select * from {v}.DOVSEISMIC3DCOLLECTION_SDE'''
+    query_vintages = f'''select * from {v}.DOVSEISMICCUBE_SDE'''
+    
+    # To allow overwriting outputs change overwriteOutput option to True.
+    arcpy.env.overwriteOutput = True
+
+    # Model Environment settings
+    
+    with arcpy.EnvManager(scratchWorkspace=geoprocessing_workspace, 
+                          workspace=geoprocessing_workspace):
+                
+
+
+        # Process: Make Query Layer
+        print('...Querying 3D collections...')
+        with arcpy.EnvManager(scratchWorkspace=geoprocessing_workspace, workspace=geoprocessing_workspace):
+            dov_seis3D_geom_raw_SSA1 = arcpy.management.MakeQueryLayer(input_database=k,
+                                                                       out_layer_name=out_collection,                                                                 
+                                                                       query = query_collections, 
+                                                                       oid_fields=oid_fields, 
+                                                                       shape_type=shape_type, 
+                                                                       srid=srid,                                                                     
+                                                                       spatial_reference=spatial_reference,
+                                                                       spatial_properties=spatial_properties, 
+                                                                       m_values=m_values, 
+                                                                       z_values=z_values, 
+                                                                       extent=extent)[0]
+
+        print('...Querying 3D vintages...')
+        with arcpy.EnvManager(scratchWorkspace=geoprocessing_workspace, workspace=geoprocessing_workspace):
+            dov_seis3D_cube_raw_SAK1 = arcpy.management.MakeQueryLayer(input_database=k,
+                                                                       out_layer_name=out_vintages,                                                                 
+                                                                       query = query_vintages, 
+                                                                       oid_fields=oid_fields, 
+                                                                       shape_type=shape_type, 
+                                                                       srid=srid,                                                                     
+                                                                       spatial_reference=spatial_reference,
+                                                                       spatial_properties=spatial_properties, 
+                                                                       m_values=m_values, 
+                                                                       z_values=z_values, 
+                                                                       extent=extent)[0]
+            
+        # Process: Feature Class to Feature Class 
+        with arcpy.EnvManager(scratchWorkspace=geoprocessing_workspace, workspace=geoprocessing_workspace):
+            dov_seis3D_collections = arcpy.conversion.FeatureClassToFeatureClass(in_features=out_collection, 
+                                                                             out_path=geoprocessing_workspace, 
+                                                                             out_name=out_collection, 
+                                                                             where_clause="", 
+                                                                             field_mapping=field_mapping_collections, 
+                                                                             config_keyword="")[0]
+            add_and_calculate_fields(dov_seis3D_collections,db_name,v)
+        
+        with arcpy.EnvManager(scratchWorkspace=geoprocessing_workspace, workspace=geoprocessing_workspace):
+            dov_seis3D_vintages = arcpy.conversion.FeatureClassToFeatureClass(in_features=out_vintages, 
+                                                                             out_path=geoprocessing_workspace, 
+                                                                             out_name=out_vintages, 
+                                                                             where_clause="", 
+                                                                             field_mapping=field_mapping_vintages, 
+                                                                             config_keyword="")[0]
+            add_and_calculate_fields(dov_seis3D_vintages,db_name,v)
+
+
+
+            
+            
+            
+            
+            
+################################
+## START STUDIO 2D FUNCTION
+###############################
+def get_studio_2d(k,v,geoprocessing_workspace):
+    """Creates a query layer to create 2D seismic lines. 
+    
+    Function argument requires a dictionary with a key to the sde filepath and a list of 
+    values for each of the databases in the studio instance.    
+        
+
+    Parameters
+    ----------
+    k : dictionary key, required
+        The key contains sde filepath as a string
+    
+    v: dictionary values, required
+        The list of string values for the prefix 
+        of each database instance. 
+        
+    geoprocessing_workspace: workspace, string
+        The filepath for the geodatabase where 
+        the output will reside
+    
+    """
+
+
+    #get the studio repo name from the sde filepath
+    db_name = ''
+    db_name = k.split('\\')[-1]
+    db_name = db_name.split('.')[0]
+    
+    print(f'\nQuerying 2D seismic from {db_name}:{v} studio...')
+    
+    #MakeQuery Arguments
+    query_2d = f"""SELECT o.shape,
+       o.GUID GUID,
+       l.GUID Line_GUID,
+       o.Name Name,
+       s.SurveyName Survey_name,
+       s.VintageName Vintage_name,
+       s.Domain Domain,
+       o.Folder_Path PATH,
+       l.CDPIncrement CDP_Increment,
+       l.FirstCDP First_CDP,
+       l.LastCDP Last_CDP,
+       s.SampleOffset TimeDepth_top,
+       s.SampleInterval Sample_Interval,
+       s.SamplesPerTrace Number_of_samples_per_trace,
+       s.TraceCount Number_of_traces,
+       s.ClipMin Amp_Min,
+       s.ClipMax Amp_Max,
+       s.SampleUnit TimeDepth_unit,
+       s.SeismicFormat Storage_type,
+       s.ReferenceFileName File_path,
+       o.Object_Create_Date Date_created,
+       o.Insert_Date Date_created_in_repos,
+       o.Object_Update_Date Date_updated,
+       o.Update_Date Date_updated_in_repos,
+       o.Data_Status Data_status,
+       o.Remarks Comments,
+       s.SRD SRD
+FROM {v}.DovSeismicLine2D s
+        LEFT OUTER JOIN {v}.DovSeismicLine2DGeometry l ON (l.Id = s.Geometry_Id)
+        INNER JOIN {v}.DBX_Object o ON (o.Entity_Id = s.Id)
+WHERE o.Generic_Domain_Object = ('DbxSeismicLine2D')"""
+    
+    
+    out_layer_name=db_name+'_'+v+'_2D_vintages'
+    oid_fields=["GUID"] 
+    shape_type="POLYLINE"
+    srid="4326" 
+    spatial_reference="GEOGCS[\"GCS_WGS_1984\",DATUM[\"D_WGS_1984\",SPHEROID[\"WGS_1984\",6378137.0,298.257223563]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]];-400 -400 1000000000;-100000 10000;-100000 10000;8.98315284119521E-09;0.001;0.001;IsHighPrecision"
+    spatial_properties="DEFINE_SPATIAL_PROPERTIES"
+    m_values="DO_NOT_INCLUDE_M_VALUES"
+    z_values="DO_NOT_INCLUDE_Z_VALUES" 
+    extent="0 0 0 0"    
+
+    #FC2FC Arguments
+    field_mapping="GUID \"GUID\" true true false 128 Text 0 0,First,#,dov_seis2d_geom_raw_SAKP,GUID,0,128;LINE_GUID \"LINE_GUID\" true true false 128 Text 0 0,First,#,dov_seis2d_geom_raw_SAKP,LINE_GUID,0,128;NAME \"NAME\" true true false 255 Text 0 0,First,#,dov_seis2d_geom_raw_SAKP,NAME,0,255;SURVEY_NAME \"SURVEY_NAME\" true true false 255 Text 0 0,First,#,dov_seis2d_geom_raw_SAKP,SURVEY_NAME,0,255;VINTAGE_NAME \"VINTAGE_NAME\" true true false 255 Text 0 0,First,#,dov_seis2d_geom_raw_SAKP,VINTAGE_NAME,0,255;DOMAIN \"DOMAIN\" true true false 64 Text 0 0,First,#,dov_seis2d_geom_raw_SAKP,DOMAIN,0,64;PATH \"PATH\" true true false 999 Text 0 0,First,#,dov_seis2d_geom_raw_SAKP,PATH,0,999;CDP_INCREMENT \"CDP_INCREMENT\" true true false 8 Double 10 38,First,#,dov_seis2d_geom_raw_SAKP,CDP_INCREMENT,-1,-1;FIRST_CDP \"FIRST_CDP\" true true false 8 Double 10 38,First,#,dov_seis2d_geom_raw_SAKP,FIRST_CDP,-1,-1;LAST_CDP \"LAST_CDP\" true true false 8 Double 10 38,First,#,dov_seis2d_geom_raw_SAKP,LAST_CDP,-1,-1;TIMEDEPTH_TOP \"TIMEDEPTH_TOP\" true true false 8 Double 10 38,First,#,dov_seis2d_geom_raw_SAKP,TIMEDEPTH_TOP,-1,-1;SAMPLE_INTERVAL \"SAMPLE_INTERVAL\" true true false 8 Double 10 38,First,#,dov_seis2d_geom_raw_SAKP,SAMPLE_INTERVAL,-1,-1;NUMBER_OF_SAMPLES_PER_TRACE \"NUMBER_OF_SAMPLES_PER_TRACE\" true true false 4 Long 0 10,First,#,dov_seis2d_geom_raw_SAKP,NUMBER_OF_SAMPLES_PER_TRACE,-1,-1;NUMBER_OF_TRACES \"NUMBER_OF_TRACES\" true true false 4 Long 0 10,First,#,dov_seis2d_geom_raw_SAKP,NUMBER_OF_TRACES,-1,-1;AMP_MIN \"AMP_MIN\" true true false 8 Double 10 38,First,#,dov_seis2d_geom_raw_SAKP,AMP_MIN,-1,-1;AMP_MAX \"AMP_MAX\" true true false 8 Double 10 38,First,#,dov_seis2d_geom_raw_SAKP,AMP_MAX,-1,-1;TIMEDEPTH_UNIT \"TIMEDEPTH_UNIT\" true true false 2 Text 0 0,First,#,dov_seis2d_geom_raw_SAKP,TIMEDEPTH_UNIT,0,2;STORAGE_TYPE \"STORAGE_TYPE\" true true false 64 Text 0 0,First,#,dov_seis2d_geom_raw_SAKP,STORAGE_TYPE,0,64;FILE_PATH \"FILE_PATH\" true true false 999 Text 0 0,First,#,dov_seis2d_geom_raw_SAKP,FILE_PATH,0,999;DATE_CREATED \"DATE_CREATED\" true true false 8 Date 0 0,First,#,dov_seis2d_geom_raw_SAKP,DATE_CREATED,-1,-1;DATE_CREATED_IN_REPOS \"DATE_CREATED_IN_REPOS\" true true false 8 Date 0 0,First,#,dov_seis2d_geom_raw_SAKP,DATE_CREATED_IN_REPOS,-1,-1;DATE_UPDATED \"DATE_UPDATED\" true true false 8 Date 0 0,First,#,dov_seis2d_geom_raw_SAKP,DATE_UPDATED,-1,-1;DATE_UPDATED_IN_REPOS \"DATE_UPDATED_IN_REPOS\" true true false 8 Date 0 0,First,#,dov_seis2d_geom_raw_SAKP,DATE_UPDATED_IN_REPOS,-1,-1;DATA_STATUS \"DATA_STATUS\" true true false 64 Text 0 0,First,#,dov_seis2d_geom_raw_SAKP,DATA_STATUS,0,64;COMMENTS \"COMMENTS\" true true false 4000 Text 0 0,First,#,dov_seis2d_geom_raw_SAKP,COMMENTS,0,4000;SRD \"SRD\" true true false 8 Double 10 38,First,#,dov_seis2d_geom_raw_SAKP,SRD,-1,-1"
+    
+    # To allow overwriting outputs change overwriteOutput option to True.
+    arcpy.env.overwriteOutput = True
+
+    #geoprocessing_workspace = r'I:\UTCS\Region\Global\LVS\GLOB_NO\Work\_global_pet\COUNTRIES\Work\Users\wmzoell\ArcGIS\Models\geoprocessing.gdb'
+    
+    with arcpy.EnvManager(scratchWorkspace=geoprocessing_workspace, 
+                      workspace=geoprocessing_workspace):
+        
+        print('...Querying 2D collections...')
+        with arcpy.EnvManager(scratchWorkspace=geoprocessing_workspace, workspace=geoprocessing_workspace):
+            # Process: Make Query Layer (Seis2D Geom) (Make Query Layer) (management)
+            dov_seis2d_geom_raw_SAKP = arcpy.management.MakeQueryLayer(input_database=k, 
+                                                           out_layer_name=out_layer_name, 
+                                                           query=query_2d, 
+                                                           oid_fields=oid_fields, 
+                                                           shape_type=shape_type, 
+                                                           srid=srid, 
+                                                           spatial_reference=spatial_reference, 
+                                                           spatial_properties=spatial_properties, 
+                                                           m_values=m_values, 
+                                                           z_values=z_values, 
+                                                           extent=extent)[0]
+        # Process: Feature Class to Feature Class (Seis2D Geom) (Feature Class To Feature Class) (conversion)
+        with arcpy.EnvManager(scratchWorkspace=geoprocessing_workspace, workspace=geoprocessing_workspace):
+                                                                                 
+            tbl_seis2D_geom_20 = arcpy.conversion.FeatureClassToFeatureClass(in_features=out_layer_name, 
+                                                                             out_path=geoprocessing_workspace, 
+                                                                             out_name=out_layer_name, 
+                                                                             where_clause="", 
+                                                                             field_mapping=field_mapping, 
+                                                                             config_keyword="")[0]
+            add_and_calculate_fields(tbl_seis2D_geom_20,db_name,v)
+
+            
+################################
+## BUILD ADDTL ATTRIBUTES
+###############################
+def add_and_calculate_fields(in_table,db_name,v):
+    """Adds new attribute fields and populates with studio instance and database names    
+        
+
+    Parameters
+    ----------
+    in_table: featureclass, required
+        The table or feature class the attributes are added to
+    
+    db_name: string, required
+        Name of the studio instance
+        
+    v: string, required
+        Name of the studio database
+    
+    """
+    
+    fc_name = in_table.split('\\')[-1]
+    print(f"...Creating and calculating fields for {fc_name}...")    
+    
+    # Process: Add Field (STUDIO_INSTANCE) (management)
+    arcpy.management.AddField(in_table=in_table, 
+                              field_name="STUDIO_INSTANCE", 
+                              field_type="TEXT", 
+                              field_precision=None, 
+                              field_scale=None, 
+                              field_length=None, 
+                              field_alias="", 
+                              field_is_nullable="NULLABLE", 
+                              field_is_required="NON_REQUIRED", 
+                              field_domain="")[0]
+
+    # Process: Add Field (STUDIO_DB) (management)
+    arcpy.management.AddField(in_table=in_table, 
+                              field_name="STUDIO_DB", 
+                              field_type="TEXT", 
+                              field_precision=None, 
+                              field_scale=None, 
+                              field_length=None, 
+                              field_alias="", 
+                              field_is_nullable="NULLABLE", 
+                              field_is_required="NON_REQUIRED", 
+                              field_domain="")[0]    
+    
+    # Process: Calculate Field (STUDIO_INSTANCE) (management)
+    arcpy.management.CalculateField(in_table=in_table, 
+                                    field="STUDIO_INSTANCE", 
+                                    expression="'"+db_name+"'", 
+                                    expression_type="PYTHON3", 
+                                    code_block="", 
+                                    field_type="TEXT", 
+                                    enforce_domains="NO_ENFORCE_DOMAINS")[0]
+
+    # Process: Calculate Field (STUDIO_DB) (management)
+    arcpy.management.CalculateField(in_table=in_table, 
+                        field="STUDIO_DB", 
+                        expression="'"+v+"'", 
+                        expression_type="PYTHON3", 
+                        code_block="", 
+                        field_type="TEXT", 
+                        enforce_domains="NO_ENFORCE_DOMAINS")[0]            
+
+#####################################
+## CALCULATE TOTAL PROCESSING TIME
+#####################################
+def delta_time(start_datetime):
+    end_datetime = datetime.now()
+    delta_datetime = end_datetime - start_datetime
+    minutes = divmod(delta_datetime.total_seconds(), 60) 
+    print(start_datetime)
+    print(end_datetime)
+    print('Total time in minutes: ', round(minutes[0]), 'minutes',round(minutes[1],2), 'seconds')
+    
+            
+################################
+## RUN MAIN FUNCTION
+###############################                                 
+                        
+if __name__ == '__main__':
+    start_datetime = datetime.now()
+    got_error = False
+    for k, v in studio_dict.items():
+        for item in v:
+            try:
+                get_studio_3d(k,item,geoprocessing_workspace)
+                get_studio_2d(k,item,geoprocessing_workspace)
+            except:
+                got_error = True
+                print('!ERROR: feature class is locked')
+        
+    if got_error:
+        print('\nINCOMPLETE')
+    else:
+        print('\ncomplete.')
+    
+    delta_time(start_datetime)
+    
+
+
+# # TESTING HOW TO ITERATE THROUGH A DICTIONARY
+
+# Since some studio instances have more than one database, we have to add them as a list of values for the key. This means we need to iterate through each list of values for each key. nested loops are so much fun. 
+
+# In[72]:
+
+
+P_PET_SAKP = r'I:\UTCS\Region\Global\LVS\GLOB_NO\Work\_global_pet\COUNTRIES\Work\Users\wmzoell\ArcGIS\Connections\P_PET_SAKP.sde'
+P_PET_SSA1P = r'I:\UTCS\Region\Global\LVS\GLOB_NO\Work\_global_pet\COUNTRIES\Work\Users\wmzoell\ArcGIS\Connections\P_PET_SSA1P.sde'
+P_PET_SSA2P = r'I:\UTCS\Region\Global\LVS\GLOB_NO\Work\_global_pet\COUNTRIES\Work\Users\wmzoell\ArcGIS\Connections\P_PET_SSA2P.sde'
+P_PET_SAMP = r'I:\UTCS\Region\Global\LVS\GLOB_NO\Work\_global_pet\COUNTRIES\Work\Users\wmzoell\ArcGIS\Connections\P_PET_SAMP.sde'
+
+
+
+Studio_Dict_Test = {
+    P_PET_SAKP:['SAK01'],
+    P_PET_SSA1P:['WAFR_HOU'],
+    P_PET_SSA2P:['EAFR_HOU'],
+    P_PET_SAMP: ['BRAZIL_INT','GUYANA_INT']
+}
+
+i = 0  
+for k, v in Studio_Dict_Test.items():
+    for item in v:
+        i = i+1
+        v = item
+        print(i)
+        print(k)
+        print(v)
+    
+
+
+
+
+
+
+# # Making sure I remember how to do datetime calculations
+
+# In[6]:
+
+
+from datetime import datetime
+#import datetime
+
+start_datetime = datetime.now()
+end_datetime = datetime.now()
+
+delta_datetime = end_datetime - start_datetime
+
+minutes = divmod(delta_datetime.total_seconds(), 60) 
+print('Total difference in minutes: ', minutes[0], 'minutes',
+                                 minutes[1], 'seconds')
+
+print(minutes)
+
+
+# In[4]:
+
+
+from datetime import datetime
+d1 = datetime.now()
+
+
+# In[32]:
+
+
+k = 'hello'
+expression1 = f'\"{k}\"'
+print(expression1)    
+
+
+expression1 = ""
+# Process: Calculate Field (Calculate Field) (management)
+arcpy.management.CalculateField(in_table=dov_seis3D_collections, 
+                                field="studio_instance", 
+                                expression="'HELLO'", 
+                                expression_type="PYTHON3", 
+                                code_block="", 
+                                field_type="TEXT", 
+                                enforce_domains="NO_ENFORCE_DOMAINS")[0]
+
