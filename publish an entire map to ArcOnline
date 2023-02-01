@@ -1,0 +1,24 @@
+import arcpy
+from arcgis.gis import GIS
+
+# Connect to ArcGIS Pro and get the map object
+aprx = arcpy.mp.ArcGISProject("CURRENT")
+map = aprx.listMaps()[0]
+
+# Connect to ArcGIS Online
+gis = GIS(https://yourorg.maps.arcgis.com, "username", "password")
+
+# Loop through all layers in the map
+for lyr in map.listLayers():
+    # Get the dataframe object for the layer
+    df = lyr.dataSource
+    # Get the feature layer from the dataframe
+    fl = df.createMapLayer()
+    # Publish the feature layer to ArcGIS Online
+    item_properties = {
+        "title": lyr.name,
+        "type": "Feature Layer",
+        "tags": "ArcGIS Pro, Python API"
+    }
+    fl_item = gis.content.add(item_properties, fl)
+    print(f"{lyr.name} has been published!")
